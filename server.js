@@ -1,50 +1,23 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const puppeteer = require('puppeteer');
-const path = require('path');
+import { Router } from 'itty-router'
+import { generateImage } from './generateImage'
 
-const app = express();
-app.use(bodyParser.json());
-app.use(express.static('public'));
+const router = Router()
 
-app.post('/generate', async (req, res) => {
-    const { code } = req.body;
+router.post('/generate', async (request) => {
+  try {
+    const { code } = await request.json()
+    const imagePath = await generateImage(code)
+    return new Response(imagePath, {
+      headers: { 'Content-Type': 'image/png' }
+    })
+  } catch (error) {
+    console.error('Error generating image:', error)
+    return new Response('Error generating image: ' + error.message, { status: 500 })
+  }
+})
 
-    try {
-        const browser = await puppeteer.launch();
-        const page = await browser.newPage();
-        await page.setContent(`
-            <html>
-                <head>
-                    <script type="module">
-                        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@9.2.2/dist/mermaid.esm.min.mjs';
-                        mermaid.initialize({ startOnLoad: true });
-                    </script>
-                    <style>
-                        body { background: white; }
-                    </style>
-                </head>
-                <body>
-                    <div class="mermaid">${code}</div>
-                </body>
-            </html>
-        `);
+router.all('*', () => new Response('Not Found.', { status: 404 }))
 
-        await page.waitForSelector('.mermaid');
-        const element = await page.$('.mermaid');
-        const boundingBox = await element.boundingBox();
-        const screenshotPath = path.join(__dirname, 'public', 'output.png');
-
-        await element.screenshot({ path: screenshotPath, clip: boundingBox });
-        await browser.close();
-
-        res.sendFile(screenshotPath);
-    } catch (error) {
-        console.error('Error generating image:', error);
-        res.status(500).json({ error: 'Error generating image: ' + error.message });
-    }
-});
-
-app.listen(3000, () => {
-    console.log('Server started on http://localhost:3000');
-});
+addEventListener('fetch', (event) => {
+  event.respondWith(router.handle(event.request))
+})

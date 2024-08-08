@@ -1,0 +1,9 @@
+name = "mermaid-generator"
+type = "javascript"
+
+account_id = "your-cloudflare-account-id"
+workers_dev = true
+compatibility_date = "2024-08-08"
+
+[build]
+command = "npm run build"
